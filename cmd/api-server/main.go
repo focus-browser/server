@@ -8,12 +8,14 @@ import (
 
 	"code.vin047.com/focus-browser-server/internal/kagi"
 	"code.vin047.com/focus-browser-server/internal/search"
+	"code.vin047.com/focus-browser-server/internal/summary"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 )
 
 var searchClient search.Client
+var summaryClient summary.Client
 
 func main() {
 	logger := log.New(os.Stdout, "[INFO]: ", log.LstdFlags)
@@ -29,6 +31,7 @@ func main() {
 	}
 	kagiClient := kagi.NewClient(kagiApiKey)
 	searchClient = kagiClient
+	summaryClient = kagiClient
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -46,6 +49,7 @@ func main() {
 		})
 		r.Route("/v0", func(r chi.Router) {
 			r.Post("/search", searchFunc)
+			r.Post("/summarise", summarise)
 		})
 	})
 
@@ -72,4 +76,20 @@ func searchFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.Render(w, r, RenderSearch(result))
+}
+
+func summarise(w http.ResponseWriter, r *http.Request) {
+	request := &SummaryRequest{}
+	if err := render.Bind(r, request); err != nil {
+		render.Render(w, r, ErrRenderInvalidRequest(err))
+		return
+	}
+
+	result, err := summaryClient.Summarise(request.Url)
+	if err != nil {
+		render.Render(w, r, ErrRender(err))
+		return
+	}
+
+	render.Render(w, r, RenderSummary(result))
 }

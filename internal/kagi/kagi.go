@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"code.vin047.com/focus-browser-server/internal/search"
+	"code.vin047.com/focus-browser-server/internal/summary"
 	kagi "github.com/httpjamesm/kagigo"
 )
 
@@ -47,5 +48,22 @@ func (c *Client) Search(query string) (*search.Result, error) {
 			}
 			return references
 		}(),
+	}, err
+}
+
+func (c *Client) Summarise(url string) (*summary.Result, error) {
+	response, err := c.kagiClient.UniversalSummarizerCompletion(kagi.UniversalSummarizerParams{
+		URL:         url,
+		SummaryType: kagi.SummaryTypeTakeaways,
+		Engine:      kagi.SummaryEngineAgnes,
+	})
+	if err != nil {
+		return &summary.Result{}, err
+	}
+
+	loggerDebug.Printf("Tokens: %d\n", response.Data.Tokens)
+
+	return &summary.Result{
+		Response: response.Data.Output,
 	}, err
 }
